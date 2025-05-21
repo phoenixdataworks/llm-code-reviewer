@@ -60,20 +60,69 @@ class OpenAIService(BaseLLMService):
         """
 
     def get_ai_response(self, prompt: str) -> List[Dict[str, str]]:
-        """Get response from OpenAI model."""
+        """Get response from OpenAI model, using the appropriate API endpoint."""
+        # Models that should use the responses.create endpoint
+        # Based on user feedback and logs (gpt-4o-mini being called 'o3')
+        reasoning_models_list = ["gpt-4o-mini", "o3", "o3-mini", "o1", "o4-mini"] 
+
+        response_text = None
+
         try:
-            response = self.client.chat.completions.create(
-                model=self.model,
-                temperature=0.3,
-                messages=[
-                    {"role": "system", "content": "You are an expert code reviewer."},
-                    {"role": "user", "content": prompt}
-                ]
-            )
-            if response.choices:
-                response_text = self._clean_response_text(response.choices[0].message.content)
-                return self._parse_response(response_text)
-            return []
+            if self.model in reasoning_models_list:
+                # Use responses.create for specified reasoning models
+                print(f"Using responses.create for model: {self.model}")
+                api_response = self.client.responses.create(
+                    model=self.model,
+                    input=prompt,
+                    reasoning={"effort": "medium", "summary": "auto"} # Default reasoning params
+                )
+                if hasattr(api_response, 'output_text'):
+                    response_text = api_response.output_text
+                else:
+                    # Fallback for older/different response objects, or if output_text is missing
+                    # This part might need adjustment based on the actual response structure of client.responses.create
+                    # For now, assuming it might be in a similar place as chat completions if not output_text
+                    if hasattr(api_response, 'choices') and api_response.choices and hasattr(api_response.choices[0], 'message') and api_response.choices[0].message:
+                         response_text = api_response.choices[0].message.content
+                    elif hasattr(api_response, 'message') and api_response.message: # Another possible structure
+                         response_text = api_response.message.content
+                    else:
+                        print(f"OpenAI API call (responses.create) to model {self.model} returned an unexpected response structure.")
+                        print(f"Response object: {api_response}")
+
+
+            else:
+                # Use chat.completions.create for other models
+                print(f"Using chat.completions.create for model: {self.model}")
+                completion_params = {
+                    "model": self.model,
+                    "messages": [
+                        {"role": "system", "content": "You are an expert code reviewer."},
+                        {"role": "user", "content": prompt}
+                    ]
+                }
+                # Temperature for non-reasoning models (excluding gpt-4o-mini/o3 as they're now handled above)
+                # If a new model is added here that needs specific temperature, adjust accordingly.
+                # For now, if it's not a reasoning model, and not the ones previously needing default, use 0.3.
+                if self.model not in ["gpt-4o-mini", "o3"]: #This check is somewhat redundant now but kept for safety for other chat models
+                     completion_params["temperature"] = 0.3
+                
+                api_response = self.client.chat.completions.create(**completion_params)
+                
+                if api_response.choices and api_response.choices[0].message:
+                    response_text = api_response.choices[0].message.content
+                else:
+                    print(f"OpenAI API call (chat.completions.create) to model {self.model} returned no choices or empty message.")
+
+            if response_text:
+                cleaned_text = self._clean_response_text(response_text)
+                return self._parse_response(cleaned_text)
+            else:
+                print(f"No valid response text received from model {self.model}.")
+                return []
+
         except Exception as e:
-            print(f"Error during OpenAI API call: {e}")
+            print(f"Error during OpenAI API call to model {self.model}: {e}")
+            import traceback
+            traceback.print_exc()
             return []

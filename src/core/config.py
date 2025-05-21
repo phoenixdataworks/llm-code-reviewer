@@ -3,7 +3,10 @@ from github import Github
 from ..utils.language_validator import LanguageValidator
 
 class Config:
-    GITHUB_TOKEN = os.environ["GITHUB_TOKEN"]
+    GITHUB_TOKEN = os.environ.get("GITHUB_TOKEN")
+    if not GITHUB_TOKEN:
+        raise ValueError("GITHUB_TOKEN environment variable is not set or is empty. Please provide a valid GitHub token.")
+
     GEMINI_API_KEY = os.environ.get('GEMINI_API_KEY')
     GEMINI_MODEL = os.environ.get('GEMINI_MODEL', 'gemini-1.5-flash-002')
     OPENAI_API_KEY = os.environ.get('OPENAI_API_KEY')
