@@ -1,9 +1,22 @@
-from typing import List, Dict
+from typing import List, Dict, Any, Optional
 from openai import OpenAI
 from unidiff import Hunk, PatchedFile
 from ...core.config import Config
 from ...core.models import PRDetails
 from .base import BaseLLMService
+
+# Model configuration registry with per-model parameters
+MODEL_CONFIG = {
+    # "Reasoning" models - deterministic, low temp
+    "gpt-4o-mini": {"temperature": 0.0, "top_p": 1.0},
+    "o3":          {"temperature": 0.0, "top_p": 1.0},
+    "o3-mini":     {"temperature": 0.0, "top_p": 1.0},
+    "o1":          {"temperature": 0.0, "top_p": 1.0},
+    "o4-mini":     {"temperature": 0.0, "top_p": 1.0},
+    # "Regular" chat models - mildly creative
+    "gpt-3.5-turbo": {"temperature": 0.3, "top_p": 1.0},
+    "gpt-4o":        {"temperature": 0.3, "top_p": 1.0},
+}
 
 class OpenAIService(BaseLLMService):
     """
@@ -59,61 +72,57 @@ class OpenAIService(BaseLLMService):
         ```
         """
 
+    def _build_messages(self, prompt: str) -> List[Dict[str, str]]:
+        """Build messages array for chat completions API."""
+        return [
+            {"role": "system", "content": "You are an expert code reviewer."},
+            {"role": "user", "content": prompt}
+        ]
+    
+    def _call_chat_completions(self, messages: List[Dict[str, str]], **kwargs) -> Any:
+        """Make the API call to OpenAI chat completions endpoint with proper parameters."""
+        completion_params = {
+            "model": self.model,
+            "messages": messages,
+            **kwargs  # Include any model-specific parameters
+        }
+        
+        return self.client.chat.completions.create(**completion_params)
+    
+    def _extract_content(self, api_response: Any) -> Optional[str]:
+        """Extract content from API response, handling different response structures."""
+        if (hasattr(api_response, 'choices') and 
+            api_response.choices and 
+            hasattr(api_response.choices[0], 'message') and 
+            api_response.choices[0].message):
+            return api_response.choices[0].message.content
+        
+        print(f"OpenAI API call to model {self.model} returned an unexpected response structure.")
+        print(f"Response object: {api_response}")
+        return None
+
     def get_ai_response(self, prompt: str) -> List[Dict[str, str]]:
         """Get response from OpenAI model, using the appropriate API endpoint."""
-        # Models that should use the responses.create endpoint
-        # Based on user feedback and logs (gpt-4o-mini being called 'o3')
-        reasoning_models_list = ["gpt-4o-mini", "o3", "o3-mini", "o1", "o4-mini"] 
-
         response_text = None
 
         try:
-            if self.model in reasoning_models_list:
-                # Use responses.create for specified reasoning models
-                print(f"Using responses.create for model: {self.model}")
-                api_response = self.client.responses.create(
-                    model=self.model,
-                    input=prompt,
-                    reasoning={"effort": "medium", "summary": "auto"} # Default reasoning params
-                )
-                if hasattr(api_response, 'output_text'):
-                    response_text = api_response.output_text
-                else:
-                    # Fallback for older/different response objects, or if output_text is missing
-                    # This part might need adjustment based on the actual response structure of client.responses.create
-                    # For now, assuming it might be in a similar place as chat completions if not output_text
-                    if hasattr(api_response, 'choices') and api_response.choices and hasattr(api_response.choices[0], 'message') and api_response.choices[0].message:
-                         response_text = api_response.choices[0].message.content
-                    elif hasattr(api_response, 'message') and api_response.message: # Another possible structure
-                         response_text = api_response.message.content
-                    else:
-                        print(f"OpenAI API call (responses.create) to model {self.model} returned an unexpected response structure.")
-                        print(f"Response object: {api_response}")
+            # Get model-specific configuration or fall back to default
+            model_config = MODEL_CONFIG.get(self.model, {"temperature": 0.3, "top_p": 1.0})
+            
+            # Log which model we're using
+            model_type = "Reasoning" if self.model in MODEL_CONFIG and MODEL_CONFIG[self.model]["temperature"] == 0.0 else "Standard"
+            print(f"Using {model_type} model: {self.model} with config: {model_config}")
+            
+            # Make API call with unified method
+            api_response = self._call_chat_completions(
+                self._build_messages(prompt),
+                **model_config
+            )
+            
+            # Extract content from response
+            response_text = self._extract_content(api_response)
 
-
-            else:
-                # Use chat.completions.create for other models
-                print(f"Using chat.completions.create for model: {self.model}")
-                completion_params = {
-                    "model": self.model,
-                    "messages": [
-                        {"role": "system", "content": "You are an expert code reviewer."},
-                        {"role": "user", "content": prompt}
-                    ]
-                }
-                # Temperature for non-reasoning models (excluding gpt-4o-mini/o3 as they're now handled above)
-                # If a new model is added here that needs specific temperature, adjust accordingly.
-                # For now, if it's not a reasoning model, and not the ones previously needing default, use 0.3.
-                if self.model not in ["gpt-4o-mini", "o3"]: #This check is somewhat redundant now but kept for safety for other chat models
-                     completion_params["temperature"] = 0.3
-                
-                api_response = self.client.chat.completions.create(**completion_params)
-                
-                if api_response.choices and api_response.choices[0].message:
-                    response_text = api_response.choices[0].message.content
-                else:
-                    print(f"OpenAI API call (chat.completions.create) to model {self.model} returned no choices or empty message.")
-
+            # Process the response if present
             if response_text:
                 cleaned_text = self._clean_response_text(response_text)
                 return self._parse_response(cleaned_text)
