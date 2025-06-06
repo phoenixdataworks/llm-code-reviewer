@@ -88,9 +88,9 @@ runs:
         echo "🔍 Verifying dependency installation..."
         pip check
         
-        # Show installed packages for debugging
-        echo "📋 Successfully installed packages:"
-        pip list --format=columns | head -20
+        # Show key installed packages for debugging
+        echo "📋 Key installed packages:"
+        pip show PyGithub PyJWT openai google-generativeai anthropic requests unidiff 2>/dev/null | grep -E "^(Name|Version):" | paste - - | head -10
         
         echo "✅ Dependency installation completed successfully"
 
