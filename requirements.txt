@@ -31,3 +31,4 @@ typing-extensions
 charset-normalizer
 idna
 six
+pycountry
