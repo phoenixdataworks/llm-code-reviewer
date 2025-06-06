@@ -1,39 +1,33 @@
 # Core GitHub integration
-PyGithub==2.1.1
-PyJWT==2.8.0
-github3.py==4.0.1
-unidiff==0.7.5
+PyGithub
+PyJWT
+github3.py
+unidiff
 
 # Essential utilities
-requests==2.31.0
-urllib3==2.0.7
-certifi==2023.11.17
+requests
+urllib3
+certifi
 
 # OpenAI (lightweight primary option)
-openai==1.35.13
-tiktoken==0.7.0
+openai
+tiktoken
 
 # Pydantic for data validation
-pydantic==2.9.2
-pydantic-core==2.27.1
+pydantic
+#pydantic-core==2.27.1
 
 # Google Gemini (conditional - only if using Gemini)
-google-generativeai==0.7.2
-google-ai-generativelanguage==0.6.6
-proto-plus==1.24.0
-protobuf==4.25.5
+google-generativeai
+google-ai-generativelanguage
+proto-plus
+protobuf
 
 # Anthropic Claude (conditional - only if using Anthropic)
-anthropic==0.34.2
+anthropic
 
 # Core Python utilities
-typing-extensions==4.9.0
-charset-normalizer==3.3.2
-idna==3.6
-six==1.16.0
-
-# Optimization notes:
-# - Reduced from 54 unpinned to 20 essential pinned packages
-# - Removed heavy dependencies that caused 13-minute startup times
-# - All versions pinned to prevent dependency resolution conflicts
-# - Dependency caching implemented in action.yml for <30s warm starts
+typing-extensions
+charset-normalizer
+idna
+six
