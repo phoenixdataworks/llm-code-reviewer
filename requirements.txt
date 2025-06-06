@@ -1,5 +1,6 @@
 # Core GitHub integration
 PyGithub==2.1.1
+PyJWT==2.8.0
 github3.py==4.0.1
 unidiff==0.7.5
 
