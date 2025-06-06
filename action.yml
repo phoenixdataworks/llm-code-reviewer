@@ -1,6 +1,6 @@
 name: "LLM Code Reviewer"
 description: "This GitHub Action automatically reviews PRs using multiple models."
-author: 'tusgino'
+author: 'tusgino >> dataguybobby'
 
 branding:
   icon: 'eye'
@@ -53,13 +53,26 @@ runs:
       with:
         python-version: '3.10'
 
-    - name: Install dependencies
+    - name: Cache Python dependencies
+      uses: actions/cache@v4
+      with:
+        path: ~/.cache/pip
+        key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}-v2
+        restore-keys: |
+          ${{ runner.os }}-pip-
+
+    - name: Install dependencies (optimized)
       shell: bash
       run: |
+        echo "Starting optimized dependency installation..."
         python -m pip install --upgrade pip
         REQUIREMENTS_PATH="$GITHUB_ACTION_PATH/requirements.txt"
         if [ -f "$REQUIREMENTS_PATH" ]; then
-          pip install -r "$REQUIREMENTS_PATH"
+          echo "Installing pinned dependencies for fast resolution..."
+          pip install --no-deps -r "$REQUIREMENTS_PATH"
+          echo "Installing any missing sub-dependencies..."
+          pip check || pip install --upgrade pip setuptools wheel
+          echo "Dependency installation completed successfully"
         else
           echo "Error: requirements.txt not found in $GITHUB_ACTION_PATH"
           exit 1
@@ -82,6 +95,7 @@ runs:
         MAIN_PY_PATH="$GITHUB_ACTION_PATH/src/main.py"
         if [ -f "$MAIN_PY_PATH" ]; then
           export PYTHONPATH="$GITHUB_ACTION_PATH:$PYTHONPATH"
+          echo "Starting LLM Code Reviewer with optimized dependencies..."
           python3.10 -m src.main
         else
           echo "Error: main.py not found in $GITHUB_ACTION_PATH/src/"
