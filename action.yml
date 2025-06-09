@@ -1,4 +1,4 @@
-name: "LLM Code Reviewer"
+name: "Phoenix Dataworks: LLM Code Reviewer"
 description: "This GitHub Action automatically reviews PRs using multiple models."
 author: 'tusgino >> dataguybobby'
 
