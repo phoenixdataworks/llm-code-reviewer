@@ -20,7 +20,7 @@ jobs:
           fetch-depth: 0
 
       - name: Run PR Review
-        uses: phoenixdataworks/llm-code-reviewer@v1.0.6
+        uses: phoenixdataworks/llm-code-reviewer@v1.0.8
         with:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GITHUB_EVENT_PATH: ${{ github.event_path }}

@@ -27,39 +27,47 @@ Add the following workflow file to your repository (e.g., `.github/workflows/cod
 
 ```yaml
 name: Code Review
-
 on:
   pull_request:
-    types: [opened, synchronize]    # Trigger on PR open or update
-
+    types: [opened, synchronize, reopened, edited]
 jobs:
-  review:
+  ai-code-review:
+    name: 'AI Code Review'
     runs-on: ubuntu-latest
+
+    # Skip reviews for dependabot PRs (optional)
+    if: github.actor != 'dependabot[bot]'
+
+    permissions:
+      contents: read
+      pull-requests: write
     steps:
-      - uses: tusgino >> phoenixdataworks/llm-code-reviewer@v1
+      - name: Checkout code
+        uses: actions/checkout@v4
         with:
-          # Required - GitHub token for PR interactions
+          fetch-depth: 0
+
+      - name: Run PR Review
+        uses: phoenixdataworks/llm-code-reviewer@v1.0.8
+        with:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          
-          # Optional - API keys for different LLM services
+          GITHUB_EVENT_PATH: ${{ github.event_path }}
+          GITHUB_EVENT_NAME: ${{ github.event_name }}
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
-          
-          # Optional - Configure specific model versions
-          GEMINI_MODEL: 'gemini-1.5-flash-002'
-          OPENAI_MODEL: 'gpt-4o-mini'
-          ANTHROPIC_MODEL: 'claude-3-opus-20240229'
-          
-          # Optional - Exclude files from review
-          INPUT_EXCLUDE: '*.md,*.txt'
-          
-          # Optional - Set review language
+          PRIMARY_MODEL: 'openai' # or gemini, anthropic
+          OPENAI_MODEL: 'o3'
           HUMAN_LANGUAGE: 'en'
-          
-          # Optional - Set primary model
-          # Can use 'gemini', 'openai', 'anthropic'
-          PRIMARY_MODEL: 'gemini'
+          INPUT_EXCLUDE: |
+            *.md
+            *.json
+            *.lock
+            *.min.js
+            *.min.css
+            package-lock.json
+            yarn.lock
+
 ```
 
 ## Inputs
