@@ -8,6 +8,21 @@
 - Added aggressive dependency caching for **<30 second subsequent runs**
 - Eliminated `google-api-python-client` dependency conflicts
 
+## Recent Bug Fixes
+
+### OpenAI o3 Model Temperature Fix (Latest)
+
+**Issue:** OpenAI o3 models (o1, o3, o3-mini) don't support custom temperature parameters
+- Error: `'temperature' does not support 0.0 with this model. Only the default (1) value is supported`
+- Caused all o3 model API calls to fail with 400 Bad Request
+
+**Fix:** Updated `src/services/llms/openai.py`
+- Set o3-series models to use empty config `{}` (defaults only)
+- Updated reasoning model detection logic
+- Maintains deterministic behavior through OpenAI's default temperature
+
+**Impact:** ✅ o3 models now work correctly without API errors
+
 ## Architecture Overview
 
 ### Core Components

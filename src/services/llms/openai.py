@@ -9,10 +9,11 @@ from .base import BaseLLMService
 MODEL_CONFIG = {
     # "Reasoning" models - deterministic, low temp
     "gpt-4o-mini": {"temperature": 0.0, "top_p": 1.0},
-    "o3":          {"temperature": 0.0, "top_p": 1.0},
-    "o3-mini":     {"temperature": 0.0, "top_p": 1.0},
-    "o1":          {"temperature": 0.0, "top_p": 1.0},
-    "o4-mini":     {"temperature": 0.0, "top_p": 1.0},
+    # O-series models (o1, o3, etc.) only support default temperature (1.0)
+    "o3":          {},  # Use default parameters only
+    "o3-mini":     {},  # Use default parameters only
+    "o1":          {},  # Use default parameters only
+    "o4-mini":     {},  # Use default parameters only
     # "Regular" chat models - mildly creative
     "gpt-3.5-turbo": {"temperature": 0.3, "top_p": 1.0},
     "gpt-4o":        {"temperature": 0.3, "top_p": 1.0},
@@ -110,7 +111,8 @@ class OpenAIService(BaseLLMService):
             model_config = MODEL_CONFIG.get(self.model, {"temperature": 0.3, "top_p": 1.0})
             
             # Log which model we're using
-            model_type = "Reasoning" if self.model in MODEL_CONFIG and MODEL_CONFIG[self.model]["temperature"] == 0.0 else "Standard"
+            reasoning_models = {"gpt-4o-mini", "o3", "o3-mini", "o1", "o4-mini"}
+            model_type = "Reasoning" if self.model in reasoning_models else "Standard"
             print(f"Using {model_type} model: {self.model} with config: {model_config}")
             
             # Make API call with unified method
